@@ -49,7 +49,6 @@ sub execute_query {
 				$servers{$ret_arr[1]} = $ret_arr[0];
 #                               print $ret_arr[0].' '.$ret_arr[1]."\n";
 			}
-			$sth->finish();
 		}
 		else {
 			print STDERR "Cannot execute query.\n";
