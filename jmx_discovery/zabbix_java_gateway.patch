@@ -1,0 +1,185 @@
+diff -ruN JAVA_workspace/JMXlld/src/com/zabbix/gateway/ItemChecker.java Downloads/zabbix-2.0.11/src/zabbix_java/src/com/zabbix/gateway/ItemChecker.java
+--- JAVA_workspace/JMXlld/src/com/zabbix/gateway/ItemChecker.java	2014-04-09 18:45:09.390063733 +0400
++++ Downloads/zabbix-2.0.11/src/zabbix_java/src/com/zabbix/gateway/ItemChecker.java	2014-02-12 13:04:28.000000000 +0400
+@@ -40,11 +40,9 @@
+ 	public static final String JSON_TAG_RESPONSE = "response";
+ 	public static final String JSON_TAG_USERNAME = "username";
+ 	public static final String JSON_TAG_VALUE = "value";
+-    public static final String JSON_TAG_LLD_PARAMS = "params";
+ 
+ 	public static final String JSON_REQUEST_INTERNAL = "java gateway internal";
+ 	public static final String JSON_REQUEST_JMX = "java gateway jmx";
+-    public static final String JSON_JMX_LLD = "java jmx lld";
+ 
+ 	public static final String JSON_RESPONSE_FAILED = "failed";
+ 	public static final String JSON_RESPONSE_SUCCESS = "success";
+diff -ruN JAVA_workspace/JMXlld/src/com/zabbix/gateway/JMXItemDiscoverer.java Downloads/zabbix-2.0.11/src/zabbix_java/src/com/zabbix/gateway/JMXItemDiscoverer.java
+--- JAVA_workspace/JMXlld/src/com/zabbix/gateway/JMXItemDiscoverer.java	2014-04-10 16:02:29.002099047 +0400
++++ Downloads/zabbix-2.0.11/src/zabbix_java/src/com/zabbix/gateway/JMXItemDiscoverer.java	1970-01-01 03:00:00.000000000 +0300
+@@ -1,154 +0,0 @@
+-package com.zabbix.gateway;
+-
+-import java.util.HashMap;
+-import java.util.Vector;
+-import java.util.Set;
+-import java.util.List;
+-import java.util.Arrays;
+-import java.util.ArrayList;
+-import java.util.regex.Pattern;
+-import java.util.regex.Matcher;
+-import java.io.File;
+-import java.lang.String;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-import javax.management.MBeanAttributeInfo;
+-import javax.management.MBeanInfo;
+-import javax.management.MBeanServerConnection;
+-import javax.management.ObjectName;
+-import javax.management.openmbean.CompositeData;
+-import javax.management.openmbean.TabularDataSupport;
+-import javax.management.remote.JMXConnector;
+-import javax.management.remote.JMXConnectorFactory;
+-import javax.management.remote.JMXServiceURL;
+-
+-import com.fasterxml.jackson.core.JsonGenerator;
+-import com.fasterxml.jackson.core.JsonFactory;
+-import org.json.*;
+-
+-
+-/**
+- * Created by maximtyukov on 4/8/14.
+- */
+-public class JMXItemDiscoverer extends ItemChecker {
+-    private static final Logger logger = LoggerFactory.getLogger(JMXItemChecker.class);
+-
+-    private JMXServiceURL url;
+-    private JMXConnector jmxc;
+-    private MBeanServerConnection mbsc;
+-
+-    private String username;
+-    private String password;
+-    private JSONObject params;
+-    private String regexp;
+-
+-    public JMXItemDiscoverer(JSONObject request) throws ZabbixException
+-    {
+-        super(request);
+-        this.request = request;
+-
+-        try
+-        {
+-            params = request.getJSONObject(JSON_TAG_LLD_PARAMS);
+-            regexp = params.getString("regexp");
+-            String conn = request.getString(JSON_TAG_CONN);
+-            int port = request.getInt(JSON_TAG_PORT);
+-
+-            url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + conn + ":" + port + "/jmxrmi");
+-            jmxc = null;
+-            mbsc = null;
+-
+-            username = request.optString(JSON_TAG_USERNAME, null);
+-            password = request.optString(JSON_TAG_PASSWORD, null);
+-
+-            if (null != username && null == password || null == username && null != password)
+-                throw new IllegalArgumentException("invalid username and password nullness combination");
+-
+-        }
+-
+-        catch (Exception e)
+-        {
+-            throw new ZabbixException(e);
+-        }
+-    }
+-
+-    @Override
+-    public JSONArray getValues() throws ZabbixException {
+-
+-        JSONArray values = new JSONArray();
+-        JSONObject value = new JSONObject();
+-        Pattern pattern = Pattern.compile(regexp);
+-
+-        try
+-        {
+-            HashMap<String, String[]> env = null;
+-            if (null != username && null != password)
+-            {
+-                env = new HashMap<String, String[]>();
+-                env.put(JMXConnector.CREDENTIALS, new String[] {username, password});
+-            }
+-
+-            logger.debug("connecting to JMX agent at {}", url);
+-            jmxc = JMXConnectorFactory.connect(url, env);
+-            mbsc = jmxc.getMBeanServerConnection();
+-
+-        //        ObjectName mbeanName = new ObjectName( domainName + ":*" );
+-            Set<ObjectName> mbeans = mbsc.queryNames(null, null);
+-        //        List<String> results = new ArrayList<String>( mbeans.size() );
+-
+-        //        JsonFactory jsf = new JsonFactory();
+-        //        JsonGenerator jsg = jsf.createGenerator(new File("mbeans.json"));
+-        //        jsg.writeStartObject();
+-
+-
+-            for ( ObjectName mbean : mbeans )
+-            {
+-                boolean matchResult = pattern.matches(regexp, mbean.toString());
+-
+-                if (matchResult) {
+-                    //				String attrs = mbsc.getMBeanInfo(mbean).getAttributes().toString();
+-
+-                    //                jsg.writeStringField("{#MBEAN}", "wtf");
+-
+-//                    MBeanInfo mbeanInfo = mbsc.getMBeanInfo(mbean);
+-//                    MBeanAttributeInfo[] attrs = mbeanInfo.getAttributes();
+-//                    JSONArray attrNames = new JSONArray();
+-//                    for (MBeanAttributeInfo attr : attrs) {
+-//                        String attrName = attr.getName();
+-//                        attrNames.put(attrName);
+-                        //					jsf.writeStringField("{#MBEAN}", mbean);
+-//                    }
+-//                    value.put(mbean.getCanonicalName(), attrNames);
+-                    values.put(mbean.getCanonicalName());
+-                } else {
+-                    System.out.println("Not matched with regexp");
+-                }
+-            }
+-        }
+-
+-        catch (Exception e)
+-        {
+-            throw new ZabbixException(e);
+-        }
+-        finally
+-        {
+-            try { if (null != jmxc) jmxc.close(); } catch (java.io.IOException exception) { }
+-
+-            jmxc = null;
+-            mbsc = null;
+-        }
+-//            jsg.writeEndObject();
+-//		jsf.close();
+-        return values;
+-    }
+-
+-
+-
+-
+-    public String getStringValue(String key) throws Exception {
+-        String ret = "null";
+-        return ret;
+-    }
+-}
+diff -ruN JAVA_workspace/JMXlld/src/com/zabbix/gateway/SocketProcessor.java Downloads/zabbix-2.0.11/src/zabbix_java/src/com/zabbix/gateway/SocketProcessor.java
+--- JAVA_workspace/JMXlld/src/com/zabbix/gateway/SocketProcessor.java	2014-04-09 13:05:37.793046439 +0400
++++ Downloads/zabbix-2.0.11/src/zabbix_java/src/com/zabbix/gateway/SocketProcessor.java	2014-02-12 13:04:28.000000000 +0400
+@@ -56,8 +56,6 @@
+ 				checker = new InternalItemChecker(request);
+ 			else if (request.getString(ItemChecker.JSON_TAG_REQUEST).equals(ItemChecker.JSON_REQUEST_JMX))
+ 				checker = new JMXItemChecker(request);
+-            else if (request.getString(ItemChecker.JSON_TAG_REQUEST).equals(ItemChecker.JSON_JMX_LLD))
+-                checker = new JMXItemDiscoverer(request);
+ 			else
+ 				throw new ZabbixException("bad request tag value: '%s'", request.getString(ItemChecker.JSON_TAG_REQUEST));
+ 
