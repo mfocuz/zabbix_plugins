@@ -155,7 +155,7 @@ sub build_json_object # func builds hash with all unique RMQ API paths in keys a
 	{	
 		$key =~ m/.*\[([^:]+):([^:]+):(.*)\]/;
 		my $rmqPath = $2;
-		if (!grep(/^$rmqPath$/,@rmqPaths))
+		if (defined $rmqPath && !grep(/^$rmqPath$/,@rmqPaths))
 		{
 			my $jsonObj = get_json_object_from_rmq($rmqHosts,$rmqPath);
 			$jsonObj{$rmqPath} = map_rmq_elements($rmqPath,$jsonObj);
