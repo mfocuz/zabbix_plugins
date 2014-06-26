@@ -4,7 +4,6 @@ use JSON::XS;
 use IO::Socket;
 use strict;
 
-my $request = "java jmx lld"; # Should be set exactly to this value, this is instraction for JMX LLD server what to do
 my $zbxHeader = "ZBXD\x01";
 
 sub new {
@@ -12,7 +11,7 @@ sub new {
     my ($jmxLLDserver, $conn, $port) = @_;
     
     my $data = {
-	request => $request,
+	request => '',
 	conn => $conn,
 	port => $port,
 	keys => [],
@@ -46,7 +45,7 @@ sub get_mbeans {
     my $self = shift;
     my $regexp = shift;
     
-    my $request = "java jmx lld"; # Should be set exactly to this value, this is instraction for JMX LLD server what to do
+    my $request = "java jmx lld"; 
     $self->{data}->{params}->{regexp} = $regexp;
     $self->{data}->{request} = $request;
     
@@ -58,7 +57,6 @@ sub get_mbeans {
 
 sub request {
     my $self = shift;
-    my $request = shift;
     
     my $data = $self->{data};
     my $jmxLLDserver = $self->{jmx_lld_server};
